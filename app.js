@@ -85,10 +85,26 @@ function group(rows,key){const map=new Map();for(const r of rows){const k=r[key]
 function kpis(id,values,emptyLabel='未提供'){
  $(id).innerHTML=values.map(([label,value,type='num',note=''])=>`<div class="kpi"><div class="label">${esc(label)}</div><div class="value ${value===null?'unavailable':''}">${value===null?esc(emptyLabel):({num,money,pct}[type])(value)}</div>${note?`<small>${esc(note)}</small>`:''}</div>`).join('');
 }
-function table(id,rows,keys,first='商品名',total=null){
+function comparisonBadge(current,previous,type,invalid=false){
+ if(invalid)return '<div class="comparison neutral">对比日期无效</div>';
+ if(current===null||current===undefined)return '<div class="comparison neutral">当前无可比数据</div>';
+ if(previous===null||previous===undefined)return '<div class="comparison neutral">对比期无数据</div>';
+ const difference=current-previous;
+ if(type!=='pct'&&previous===0&&current!==0)return '<div class="comparison neutral">对比期为 0，无法计算环比</div>';
+ const change=type==='pct'?difference*100:previous===0?0:difference/previous*100;
+ const rounded=Number(change.toFixed(2)),direction=rounded>0?'up':rounded<0?'down':'flat';
+ const text=rounded===0?'环比持平':`环比 ${rounded>0?'▲ +':'▼ '}${rounded.toFixed(2)}${type==='pct'?'pp':'%'}`;
+ return `<div class="comparison ${direction}">${text}</div>`;
+}
+function addComparisons(id,keys,current,previous){
+ const invalid=!filters.compareStart||!filters.compareEnd||filters.compareStart>filters.compareEnd;
+ [...$(id).children].forEach((card,i)=>{const key=keys[i],type=columns[key]?.[1]||'num';card.insertAdjacentHTML('beforeend',comparisonBadge(current[key],previous[key],type,invalid));card.title=`对比 ${filters.compareStart} ～ ${filters.compareEnd}：${previous[key]===null?'无数据':({num,money,pct}[type])(previous[key])}${current._missing?.[key]||previous._missing?.[key]?'；部分记录未提供该字段':''}`;});
+}
+function table(id,rows,keys,first='商品名',total=null,previousRows=[],previousTotal=null){
+ const previous=new Map(previousRows.map(r=>[r.name,r]));rows=rows.map(r=>({...r,_previous:previous.get(r.name)||{}}));if(total)total={...total,_previous:previousTotal||{}};
  const old=tableState[id]||{};tableState[id]={rows,keys,first,total,sort:old.sort||'',direction:old.direction||-1};drawTable(id);
 }
-function cell(r,key,max){const value=r[key],type=columns[key]?.[1]||'num';let text=value===null||value===undefined?`<span class="na">${type==='pct'?'—':'未提供'}</span>`:({num,money,pct}[type])(value);if(key==='pay'&&value!==null&&max>0)text=`<i class="dataBar" style="width:${Math.max(0,value)/max*55}px"></i>`+text;if(r._missing?.[key]>0&&value!==null)text+='<span class="partial">部分记录未提供</span>';return `<td>${text}</td>`;}
+function cell(r,key,max){const value=r[key],type=columns[key]?.[1]||'num';let text=value===null||value===undefined?`<span class="na">${type==='pct'?'—':'未提供'}</span>`:({num,money,pct}[type])(value);if(key==='pay'&&value!==null&&max>0)text=`<i class="dataBar" style="width:${Math.max(0,value)/max*55}px"></i>`+text;if(r._missing?.[key]>0&&value!==null)text+='<span class="partial">部分记录未提供</span>';const prior=r._previous?.[key];const badge=comparisonBadge(value,prior,type,!filters.compareStart||!filters.compareEnd||filters.compareStart>filters.compareEnd);const previousText=prior===null||prior===undefined?'无数据':({num,money,pct}[type])(prior);return `<td title="${esc('对比期：'+previousText)}">${text}${badge}</td>`;}
 function drawTable(id){
  const s=tableState[id];let rows=[...s.rows];if(s.sort)rows.sort((a,b)=>s.sort==='name'?s.direction*String(a.name).localeCompare(String(b.name),'zh-CN'):(a[s.sort]===null?1:b[s.sort]===null?-1:s.direction*((a[s.sort]||0)-(b[s.sort]||0))));
  const max=Math.max(0,...rows.map(r=>r.pay||0));
@@ -173,25 +189,34 @@ function render(){
  const s=shop.filter(r=>inDate(r.date)&&(!filters.product||r.product===filters.product)&&!detailFilter);
  const shopUnavailable=detailFilter||!!filters.product&&!shop.some(r=>r.product);
  const totals=aggregate(s),linkTotals=aggregate(l),contentTotals=aggregate(n);
- $('period').textContent=`${filters.start} ～ ${filters.end}`;
+ const inCompare=r=>r.date>=filters.compareStart&&r.date<=filters.compareEnd;
+ const previousShop=aggregate(shop.filter(r=>inCompare(r)&&(!filters.product||r.product===filters.product)&&!detailFilter));
+ const previousContent=aggregate(notes.filter(r=>inCompare(r)&&dimensions(r)));
+ $('period').textContent=`当期 ${filters.start} ～ ${filters.end} · 对比 ${filters.compareStart} ～ ${filters.compareEnd}`;
  const alerts=[];if(shopUnavailable)alerts.push('店铺底表不具备当前商品／内容维度，经营总览不展示未筛选的全店数据。');if(detailFilter)alerts.push('链接底表没有账号、素材及笔记类型维度，当前链接分析显示无维度数据。');
  $('alert').textContent=alerts.join(' ');
  kpis('shopKpis',[['支付金额',totals.pay,'money'],['总访客数',totals.totalVisitors],['商品访客数',totals.visitors],['PV',totals.pv,'pct'],['加购人数',totals.cart],['加购件数',totals.cartItems]],shopUnavailable?'该维度无数据':'无数据');
  $('shopNote').textContent='PV＝商品访客数 ÷ 总访客数。跨日人数为每日人数之和，非周期去重人数。';
+ addComparisons('shopKpis',['pay','totalVisitors','visitors','pv','cart','cartItems'],totals,previousShop);
  performanceChart();
  const lg=group(l,'product');visitorFunnel(totals);productRanking(lg);rankChart('linkChart',lg,'cart','buyers');
- table('linkTable',lg,['pay','visitors','cart','buyers','cartRate','payRate','cartPayRate'],'商品名',linkTotals);
+ table('linkTable',lg,['pay','visitors','cart','buyers','cartRate','payRate','cartPayRate'],'商品名',linkTotals,group(detailFilter?[]:links.filter(r=>inCompare(r)&&(!filters.product||r.product===filters.product)),'product'),aggregate(detailFilter?[]:links.filter(r=>inCompare(r)&&(!filters.product||r.product===filters.product))));
  lineChart('rateChart',l,[{key:'cartRate',label:'加购率',color:'#9690d0',type:'pct'},{key:'payRate',label:'支付转化率',color:'#176bc4',type:'pct'}]);
  kpis('contentKpis',[['笔记支付金额',contentTotals.pay,'money'],['笔记阅读量',contentTotals.read],['引流主页次数',contentTotals.home],['笔记加购件数',contentTotals.noteItems],['引流主页支付金额',contentTotals.homePay,'money'],['点赞数',contentTotals.like],['收藏数',contentTotals.collect],['评论数',contentTotals.comment],['新增关注次数',contentTotals.follow],['浅层互动率',contentTotals.shallow,'pct'],['深层互动率',contentTotals.deep,'pct']]);
  lineChart('contentChart',n,[{key:'read',label:'阅读量',color:'#176bc4'},{key:'home',label:'引流主页次数',color:'#e66b39'}]);mediaChart(n);
+ addComparisons('contentKpis',['pay','read','home','noteItems','homePay','like','collect','comment','follow','shallow','deep'],contentTotals,previousContent);
  const published=meta.filter(r=>inDate(r.publish)&&dimensions(r));
  const pg=group(published,'product').map(g=>({name:g.name,count:g._rows.length,commercial:g._rows.filter(r=>r.kind==='商品笔记').length,ordinary:g._rows.filter(r=>r.kind==='普通笔记').length}));
  const pc={count:published.length,commercial:published.filter(r=>r.kind==='商品笔记').length,ordinary:published.filter(r=>r.kind==='普通笔记').length};
  $('publishKpis').innerHTML=[['发布总数',pc.count],['商品笔记',pc.commercial],['普通笔记',pc.ordinary]].map(([name,value])=>`<div>${name}<b>${num(value)}</b></div>`).join('');
- table('publishTable',pg,['count','commercial','ordinary'],'商品名',pc);
+ const previousPublished=meta.filter(r=>r.publish>=filters.compareStart&&r.publish<=filters.compareEnd&&dimensions(r));
+ const countRows=rows=>group(rows,'product').map(g=>({name:g.name,count:g._rows.length,commercial:g._rows.filter(r=>r.kind==='商品笔记').length,ordinary:g._rows.filter(r=>r.kind==='普通笔记').length}));
+ const countTotal=rows=>({count:rows.length,commercial:rows.filter(r=>r.kind==='商品笔记').length,ordinary:rows.filter(r=>r.kind==='普通笔记').length});
+ const hasPriorPublication=meta.some(r=>r.publish>=filters.compareStart&&r.publish<=filters.compareEnd);
+ table('publishTable',pg,['count','commercial','ordinary'],'商品名',pc,countRows(previousPublished),hasPriorPublication?countTotal(previousPublished):null);
  publicationTrend(published);
  const effectKeys=['pay','read','home','noteItems','like','collect','comment','follow','shallow','deep','homePay'];
- for(const [id,key,label]of [['effectProduct','product','商品名'],['effectAccount','account','账号'],['effectMedia','media','素材类型'],['effectKind','kind','笔记类型']])table(id,group(n,key),effectKeys,label,contentTotals);
+ for(const [id,key,label]of [['effectProduct','product','商品名'],['effectAccount','account','账号'],['effectMedia','media','素材类型'],['effectKind','kind','笔记类型']])table(id,group(n,key),effectKeys,label,contentTotals,group(notes.filter(r=>inCompare(r)&&dimensions(r)),key),previousContent);
  currentMaterial=group(n,'id').map(g=>({...g._rows[0],...g}));
  if($('newOnly').checked)currentMaterial=currentMaterial.filter(r=>inDate(r.publish));
  const query=$('search').value.trim().toLowerCase();if(query)currentMaterial=currentMaterial.filter(r=>[r.title,r.product,r.account].join(' ').toLowerCase().includes(query));
