@@ -15,7 +15,7 @@ let raw={},shop=[],links=[],notes=[],meta=[],tableState={},mediaBindings=new Map
 let filters={compareStart:'',compareEnd:'',start:'',end:'',product:'',account:'',media:'',kind:''};
 const columns={pay:['支付金额','money'],visitors:['商品访客数','num'],totalVisitors:['总访客数','num'],cart:['新增加购人数','num'],cartItems:['加购件数','num'],buyers:['支付买家数','num'],pv:['PV','pct'],cartRate:['加购率','pct'],payRate:['支付转化率','pct'],cartPayRate:['加购转化率','pct'],read:['笔记阅读量','num'],home:['引流主页次数','num'],noteCart:['笔记加购人数','num'],noteItems:['笔记加购件数','num'],like:['点赞数','num'],collect:['收藏数','num'],comment:['评论数','num'],follow:['新增关注次数','num'],shallow:['浅层互动率','pct'],deep:['深层互动率','pct'],homePay:['引流主页支付金额','money'],count:['发布总数','num'],commercial:['商品笔记数','num'],ordinary:['普通笔记数','num']};
 const pick=(r,keys)=>{for(const k of keys)if(r[k]!==undefined&&r[k]!==null&&r[k]!=='')return r[k];return null;};
-const performanceMetrics=[['销售指标','pay','支付金额','money'],['销售指标','totalVisitors','总访客数','num'],['销售指标','visitors','商品访客数','num'],['销售指标','pv','PV','pct'],['销售指标','cart','加购人数','num'],['销售指标','cartItems','加购件数','num'],['内容指标','pay','笔记支付金额','money'],['内容指标','read','笔记阅读量','num'],['内容指标','home','引流主页次数','num'],['内容指标','noteCart','笔记加购人数','num'],['内容指标','noteItems','笔记加购件数','num'],['内容指标','like','点赞数','num'],['内容指标','collect','收藏数','num'],['内容指标','comment','评论数','num'],['内容指标','follow','新增关注次数','num'],['内容指标','shallow','浅层互动率','pct'],['内容指标','deep','深层互动率','pct']];
+const performanceMetrics=[['销售指标','pay','支付金额','money'],['销售指标','totalVisitors','总访客数','num'],['销售指标','visitors','商品访客数','num'],['销售指标','pv','PV','pct'],['销售指标','cart','加购人数','num'],['销售指标','cartItems','加购件数','num'],['内容指标','pay','笔记支付金额','money'],['内容指标','read','笔记阅读量','num'],['内容指标','home','引流主页次数','num'],['内容指标','noteItems','笔记加购件数','num'],['内容指标','like','点赞数','num'],['内容指标','collect','收藏数','num'],['内容指标','comment','评论数','num'],['内容指标','follow','新增关注次数','num'],['内容指标','shallow','浅层互动率','pct'],['内容指标','deep','深层互动率','pct']];
 function monthBefore(value){if(!value)return '';const [year,month,day]=value.split('-').map(Number);const last=new Date(Date.UTC(year,month-1,0)).getUTCDate();return new Date(Date.UTC(year,month-2,Math.min(day,last))).toISOString().slice(0,10);}
 function syncCompare(){if($('compareAuto').checked||!filters.compareStart){filters.compareStart=monthBefore(filters.start);filters.compareEnd=monthBefore(filters.end);}$('compareStart').value=filters.compareStart;$('compareEnd').value=filters.compareEnd;}
 function initPerformance(){
@@ -74,7 +74,7 @@ function normalize(data){
 }
 const inDate=(d)=>!!d&&d>=filters.start&&d<=filters.end;
 const dimensions=r=>(!filters.product||r.product===filters.product)&&(!filters.account||r.account===filters.account)&&(!filters.media||r.media===filters.media)&&(!filters.kind||r.kind===filters.kind);
-const metricKeys=['pay','visitors','totalVisitors','cart','cartItems','buyers','read','home','noteCart','noteItems','like','collect','comment','follow','homePay'];
+const metricKeys=['pay','visitors','totalVisitors','cart','cartItems','buyers','read','home','noteItems','like','collect','comment','follow','homePay'];
 function aggregate(rows){
  const result={_missing:{},_total:rows.length};
  for(const key of metricKeys){const values=rows.map(r=>r[key]).filter(v=>v!==null&&v!==undefined);result[key]=values.length?values.reduce((a,b)=>a+b,0):null;result._missing[key]=rows.length-values.length;}
@@ -111,6 +111,23 @@ function lineChart(id,rows,series){
  grouped.forEach((r,i)=>{if(grouped.length<12||i%Math.ceil(grouped.length/8)===0||i===grouped.length-1)svg+=`<text x="${x(i)}" y="${h-8}" text-anchor="middle">${r.name.slice(5)}</text>`;});
  $(id).innerHTML=`<div class="legend">${series.map((s,i)=>`<span><i style="background:${s.color}"></i>${esc(s.label)}${series.length>1?`（${i?'右':'左'}轴）`:''}</span>`).join('')}</div><div class="chart"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="每日指标趋势">${svg}</svg></div>`;
 }
+
+function publicationTrend(published){
+ const daily=new Map();
+ const end=new Date(filters.end+'T00:00:00Z');
+ for(let day=new Date(filters.start+'T00:00:00Z');day<=end;day.setUTCDate(day.getUTCDate()+1))daily.set(day.toISOString().slice(0,10),{count:0,commercial:0,ordinary:0});
+ for(const note of published){const row=daily.get(note.publish);if(row){row.count++;row[note.kind==='商品笔记'?'commercial':'ordinary']++;}}
+ const rows=[...daily.entries()],w=650,h=280,left=42,right=20,top=22,bottom=38,cw=w-left-right,ch=h-top-bottom;
+ if(!rows.length){$('publishTrend').innerHTML='<div class="empty">请选择有效日期范围</div>';return;}
+ const maximum=Math.max(1,...rows.map(([,r])=>r.count)),step=Math.max(1,Math.ceil(maximum/4)),ceiling=step*4;
+ const x=i=>left+(rows.length===1?cw/2:i*cw/(rows.length-1));
+ let svg='';for(let i=0;i<=4;i++){const y=top+ch*i/4;svg+=`<line x1="${left}" y1="${y}" x2="${w-right}" y2="${y}" stroke="#e8eef6"/><text x="${left-9}" y="${y+4}" text-anchor="end">${ceiling-step*i}</text>`;}
+ const series=[['count','发布总数','#176bc4'],['commercial','商品笔记','#e66b39'],['ordinary','普通笔记','#9690d0']];
+ for(const [key,label,color]of series){const points=rows.map(([,r],i)=>[x(i),top+ch-r[key]/ceiling*ch]);svg+=`<polyline points="${points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="2.5"/>`;points.forEach(([px,py],i)=>{svg+=`<circle cx="${px}" cy="${py}" r="4" fill="white" stroke="${color}" stroke-width="2"><title>${rows[i][0]} ${label}：${rows[i][1][key]} 篇</title></circle>`;});}
+ rows.forEach(([day],i)=>{if(rows.length<9||i%Math.ceil(rows.length/7)===0||i===rows.length-1)svg+=`<text x="${x(i)}" y="${h-10}" text-anchor="middle">${day.slice(5)}</text>`;});
+ $('publishTrend').innerHTML=`<div class="legend">${series.map(([,label,color])=>`<span><i style="background:${color}"></i>${label}</span>`).join('')}</div><div class="chart"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="每日笔记发布数量趋势">${svg}</svg></div>`;
+}
+
 function visitorFunnel(totals){
  const stages=[['全店访客',totals.totalVisitors],['商品访客',totals.visitors],['加购人数',totals.cart]];
  if(stages.some(([,value])=>value===null)){$('productChart').innerHTML='<div class="empty">当前筛选维度无店铺访客数据</div>';return;}
@@ -158,7 +175,6 @@ function render(){
  const totals=aggregate(s),linkTotals=aggregate(l),contentTotals=aggregate(n);
  $('period').textContent=`${filters.start} ～ ${filters.end}`;
  const alerts=[];if(shopUnavailable)alerts.push('店铺底表不具备当前商品／内容维度，经营总览不展示未筛选的全店数据。');if(detailFilter)alerts.push('链接底表没有账号、素材及笔记类型维度，当前链接分析显示无维度数据。');
- if(!notes.some(r=>r.noteCart!==null))alerts.push('底表未提供笔记加购人数；商笔加购件数单独展示。');
  $('alert').textContent=alerts.join(' ');
  kpis('shopKpis',[['支付金额',totals.pay,'money'],['总访客数',totals.totalVisitors],['商品访客数',totals.visitors],['PV',totals.pv,'pct'],['加购人数',totals.cart],['加购件数',totals.cartItems]],shopUnavailable?'该维度无数据':'无数据');
  $('shopNote').textContent='PV＝商品访客数 ÷ 总访客数。跨日人数为每日人数之和，非周期去重人数。';
@@ -166,14 +182,15 @@ function render(){
  const lg=group(l,'product');visitorFunnel(totals);productRanking(lg);rankChart('linkChart',lg,'cart','buyers');
  table('linkTable',lg,['pay','visitors','cart','buyers','cartRate','payRate','cartPayRate'],'商品名',linkTotals);
  lineChart('rateChart',l,[{key:'cartRate',label:'加购率',color:'#9690d0',type:'pct'},{key:'payRate',label:'支付转化率',color:'#176bc4',type:'pct'}]);
- kpis('contentKpis',[['笔记支付金额',contentTotals.pay,'money'],['笔记阅读量',contentTotals.read],['引流主页次数',contentTotals.home],['笔记加购人数',contentTotals.noteCart],['笔记加购件数',contentTotals.noteItems],['引流主页支付金额',contentTotals.homePay,'money'],['点赞数',contentTotals.like],['收藏数',contentTotals.collect],['评论数',contentTotals.comment],['新增关注次数',contentTotals.follow],['浅层互动率',contentTotals.shallow,'pct'],['深层互动率',contentTotals.deep,'pct']]);
+ kpis('contentKpis',[['笔记支付金额',contentTotals.pay,'money'],['笔记阅读量',contentTotals.read],['引流主页次数',contentTotals.home],['笔记加购件数',contentTotals.noteItems],['引流主页支付金额',contentTotals.homePay,'money'],['点赞数',contentTotals.like],['收藏数',contentTotals.collect],['评论数',contentTotals.comment],['新增关注次数',contentTotals.follow],['浅层互动率',contentTotals.shallow,'pct'],['深层互动率',contentTotals.deep,'pct']]);
  lineChart('contentChart',n,[{key:'read',label:'阅读量',color:'#176bc4'},{key:'home',label:'引流主页次数',color:'#e66b39'}]);mediaChart(n);
  const published=meta.filter(r=>inDate(r.publish)&&dimensions(r));
  const pg=group(published,'product').map(g=>({name:g.name,count:g._rows.length,commercial:g._rows.filter(r=>r.kind==='商品笔记').length,ordinary:g._rows.filter(r=>r.kind==='普通笔记').length}));
  const pc={count:published.length,commercial:published.filter(r=>r.kind==='商品笔记').length,ordinary:published.filter(r=>r.kind==='普通笔记').length};
  $('publishKpis').innerHTML=[['发布总数',pc.count],['商品笔记',pc.commercial],['普通笔记',pc.ordinary]].map(([name,value])=>`<div>${name}<b>${num(value)}</b></div>`).join('');
  table('publishTable',pg,['count','commercial','ordinary'],'商品名',pc);
- const effectKeys=['pay','read','home','noteCart','noteItems','like','collect','comment','follow','shallow','deep','homePay'];
+ publicationTrend(published);
+ const effectKeys=['pay','read','home','noteItems','like','collect','comment','follow','shallow','deep','homePay'];
  for(const [id,key,label]of [['effectProduct','product','商品名'],['effectAccount','account','账号'],['effectMedia','media','素材类型'],['effectKind','kind','笔记类型']])table(id,group(n,key),effectKeys,label,contentTotals);
  currentMaterial=group(n,'id').map(g=>({...g._rows[0],...g}));
  if($('newOnly').checked)currentMaterial=currentMaterial.filter(r=>inDate(r.publish));
@@ -186,7 +203,7 @@ function drawCards(){
  $('materialInfo').textContent=`符合筛选 ${currentMaterial.length} 篇 · 每篇合并当期效果 · 素材来源：底表笔记链接；可打开笔记预览，也可绑定本地素材`;
  $('cards').innerHTML=currentMaterial.slice(0,visibleCards).map((r,i)=>{
  const media=getMedia(r)[0];const cover=media?(media.type==='video'?`<video controls preload="metadata" src="${esc(media.url)}"></video>`:`<img src="${esc(media.url)}" alt="${esc(r.title)}" loading="lazy">`):`<div class="placeholder"><strong>▷</strong>${r.url?'笔记链接素材':'无笔记链接'}<small>${r.url?'点击预览笔记素材':'可绑定本地图片或视频'}</small>${r.url?`<button data-preview="${esc(r.id)}">预览素材</button>`:''}</div>`;
- return `<article class="material"><div class="cover">${cover}<div class="badges"><span class="badge">#${i+1}　${esc(r.media)}</span><span class="badge">${esc(r.kind)}</span></div><button class="bind" data-bind="${esc(r.id)}">＋ 绑定素材</button></div><div class="cardbody"><h3 title="${esc(r.title)}">${esc(r.title)}</h3><div class="meta">${esc(r.product)} · ${esc(r.account)}<br>发布：${esc(r.publish||'未提供')}${r.publishSource==='创建时间'?'（创建时间）':''}</div><div class="metrics">${[['read','阅读量'],['like','点赞'],['collect','收藏'],['comment','评论'],['follow','新增关注'],['home','引流主页']].map(([key,label])=>`<div class="metric"><span>${label}</span><b>${r[key]===null?'—':num(r[key])}</b></div>`).join('')}</div><div class="rates"><div>浅层互动率<b>${pct(r.shallow)}</b></div><div>深层互动率<b>${pct(r.deep)}</b></div></div><div class="meta">支付金额 ${money(r.pay)} · 加购人数 ${num(r.noteCart)}<br>加购件数 ${num(r.noteItems)}${r._missing?.pay>0&&r.pay!==null?' · 部分记录无成交字段':''}</div><div class="cardfoot"><button data-preview="${esc(r.id)}">⤢ 放大预览${getMedia(r).length>1?` (${getMedia(r).length})`:''}</button>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">查看原笔记 ↗</a>`:'<span class="na">无笔记链接</span>'}</div></div></article>`;
+ return `<article class="material"><div class="cover">${cover}<div class="badges"><span class="badge">#${i+1}　${esc(r.media)}</span><span class="badge">${esc(r.kind)}</span></div><button class="bind" data-bind="${esc(r.id)}">＋ 绑定素材</button></div><div class="cardbody"><h3 title="${esc(r.title)}">${esc(r.title)}</h3><div class="meta">${esc(r.product)} · ${esc(r.account)}<br>发布：${esc(r.publish||'未提供')}${r.publishSource==='创建时间'?'（创建时间）':''}</div><div class="metrics">${[['read','阅读量'],['like','点赞'],['collect','收藏'],['comment','评论'],['follow','新增关注'],['home','引流主页']].map(([key,label])=>`<div class="metric"><span>${label}</span><b>${r[key]===null?'—':num(r[key])}</b></div>`).join('')}</div><div class="rates"><div>浅层互动率<b>${pct(r.shallow)}</b></div><div>深层互动率<b>${pct(r.deep)}</b></div></div><div class="meta">支付金额 ${money(r.pay)}<br>加购件数 ${num(r.noteItems)}${r._missing?.pay>0&&r.pay!==null?' · 部分记录无成交字段':''}</div><div class="cardfoot"><button data-preview="${esc(r.id)}">⤢ 放大预览${getMedia(r).length>1?` (${getMedia(r).length})`:''}</button>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">查看原笔记 ↗</a>`:'<span class="na">无笔记链接</span>'}</div></div></article>`;
  }).join('')||'<div class="empty">当前筛选范围没有笔记</div>';
  $('more').hidden=currentMaterial.length<=visibleCards;
 }
