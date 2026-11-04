@@ -9,6 +9,10 @@ details{position:relative;font-size:12px}summary{cursor:pointer;list-style:none;
 
 td .comparison{margin:6px 0 0 auto;font-size:10px;max-width:155px;white-space:normal}td{vertical-align:top}
 
+/* Portrait material previews keep the complete source visible. */
+.material .cover{height:auto!important;aspect-ratio:3/4;background:#eef2f7}
+.material .cover img,.material .cover video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#previewBody>img,#previewBody>video{display:block;width:min(480px,76vw);height:auto;aspect-ratio:3/4;object-fit:contain;background:#eef2f7;margin:12px auto}
 /* Shared typography and aligned chart headers. */
 body,body *{font-weight:700!important}
 select,select option,summary,#metricMenu summary{font-size:13px!important;font-weight:700!important;line-height:20px}
