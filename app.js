@@ -55,9 +55,9 @@ function normalize(data){
  links=(data['链接数据']||[]).filter(r=>date(r['日期'])&&r['统一商品名']).map(r=>({date:date(r['日期']),product:String(r['统一商品名']).trim(),pay:numeric(r['支付金额']),visitors:numeric(r['商品访客数']),cart:numeric(r['新增加购人数']),buyers:numeric(r['支付买家数'])}));
  notes=[];
  for(const [sheet,kind]of [['商笔数据','商品笔记'],['普笔数据','普通笔记']])for(const [i,r]of (data[sheet]||[]).entries()){
-   if(!date(r['日期'])||!r['笔记标题'])continue;
+   if(!date(r['日期'])||!(r['笔记ID']||r['笔记链接']||r['笔记标题']))continue;
    const id=String(r['笔记ID']||r['笔记链接']||`${r['作者昵称']}|${r['笔记标题']}`);
-   notes.push({id,date:date(r['日期']),product:String(r['统一商品名']||'未匹配商品').trim(),title:r['笔记标题'],url:safeUrl(r['笔记链接']),account:String(r['作者昵称']||'未知账号'),media:String(r['素材类型']||r['笔记类型']||'未提供'),kind,publish:date(pick(r,['笔记发布时间','发布时间','笔记创建时间'])),publishSource:pick(r,['笔记发布时间','发布时间'])?'发布时间':'创建时间',pay:numeric(r['引流店铺主页支付金额']),read:numeric(r['笔记阅读数']),home:numeric(r['引流店铺主页次数']),noteCart:numeric(pick(r,['笔记加购人数','加购人数'])),noteItems:numeric(r['笔记加购件数']),like:numeric(r['点赞次数']),collect:numeric(r['收藏次数']),comment:numeric(r['评论次数']),follow:numeric(r['笔记点击关注次数']),homePay:numeric(r['引流店铺主页支付金额']),cover:safeUrl(pick(r,['封面地址','封面链接','笔记封面','封面图'])),video:safeUrl(pick(r,['视频地址','视频链接','素材地址'])),duration:numeric(r['视频时长（秒）'])});
+   notes.push({id,date:date(r['日期']),product:String(r['统一商品名']||'未匹配商品').trim(),title:r['笔记标题']||'未填写标题',url:safeUrl(r['笔记链接']),account:String(r['作者昵称']||'未知账号'),media:String(r['素材类型']||r['笔记类型']||'未提供'),kind,publish:date(pick(r,['笔记发布时间','发布时间','笔记创建时间'])),publishSource:pick(r,['笔记发布时间','发布时间'])?'发布时间':'创建时间',pay:numeric(r['引流店铺主页支付金额']),read:numeric(r['笔记阅读数']),home:numeric(r['引流店铺主页次数']),noteCart:numeric(pick(r,['笔记加购人数','加购人数'])),noteItems:numeric(r['笔记加购件数']),like:numeric(r['点赞次数']),collect:numeric(r['收藏次数']),comment:numeric(r['评论次数']),follow:numeric(r['笔记点击关注次数']),homePay:numeric(r['引流店铺主页支付金额']),cover:safeUrl(pick(r,['封面地址','封面链接','笔记封面','封面图'])),video:safeUrl(pick(r,['视频地址','视频链接','素材地址'])),duration:numeric(r['视频时长（秒）'])});
  }
  const byId=new Map();for(const n of notes)if(!byId.has(n.id))byId.set(n.id,n);meta=[...byId.values()];
  const allDates=[...shop,...links,...notes].map(r=>r.date).filter(Boolean).sort();
