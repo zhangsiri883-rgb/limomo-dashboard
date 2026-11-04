@@ -1,7 +1,8 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const sharedMode=!['localhost','127.0.0.1','[::1]'].includes(location.hostname);
-let sharedSnapshot='',sharedBusy=false;
+const syncService='https://limomo-sync.zhangsiri883.workers.dev';
+let sharedSnapshot='',sharedBusy=false,loadPending=null;
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const numeric=value=>value===null||value===undefined||value===''?null:Number.isFinite(Number(value))?Number(value):null;
 const date=value=>{if(!value)return '';const m=String(value).match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);return m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`:'';};
@@ -241,12 +242,39 @@ function initFirstFrames(root){
  }
 }
 function toast(message){$('toast').textContent=message;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',5000);}
-async function load(silent=false,force=false){if(sharedBusy)return false;sharedBusy=true;try{const response=await fetch((force&&sharedMode?'https://raw.githubusercontent.com/zhangsiri883-rgb/limomo-dashboard/main/data.json':'data.json')+'?t='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(20000)});if(!response.ok)throw Error('底表读取失败');const snapshot=await response.text();const data=JSON.parse(snapshot);for(const sheet of ['店铺数据','链接数据','商笔数据','普笔数据'])if(!Array.isArray(data[sheet]))throw Error('数据格式不完整');const changed=snapshot!==sharedSnapshot;if(changed||force){try{const covers=await fetch('covers.json?t='+Date.now(),{cache:'no-store'});if(covers.ok)coverScreenshots=await covers.json();}catch{}normalize(data);sharedSnapshot=snapshot;if(silent)toast('已同步最新发布的数据，保留当前筛选。');}if(force){$('alert').textContent='';toast(changed?'数据已更新，已保留当前筛选。':'已检查仓库最新数据，暂无更新。腾讯底表变更需要先同步发布。');}return true;}catch(error){if(!silent)$('alert').textContent=error.message+'，保留上次数据，请稍后刷新。';return false;}finally{sharedBusy=false;}}
+async function load(silent=false,force=false){
+ if(sharedBusy){if(!force)return loadPending;await loadPending;}
+ sharedBusy=true;
+ loadPending=(async()=>{try{
+  const url=sharedMode?syncService+(force?'/refresh':'/data'):'data.json?t='+Date.now();
+  const response=await fetch(url,{method:sharedMode&&force?'POST':'GET',cache:'no-store',signal:AbortSignal.timeout(120000)});
+  const data=await response.json();if(!response.ok)throw Error(data.error||'底表读取失败');
+  for(const sheet of ['店铺数据','链接数据','商笔数据','普笔数据'])if(!Array.isArray(data[sheet]))throw Error('数据格式不完整');
+  const snapshot=JSON.stringify(data),changed=snapshot!==sharedSnapshot;
+  if(changed||force){
+   try{const covers=await fetch('covers.json?t='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(10000)});if(covers.ok)coverScreenshots=await covers.json();}catch{}
+   normalize(data);sharedSnapshot=snapshot;
+  }
+  $('alert').textContent='';
+  if(force)toast(response.headers.get('X-Sync-Status')==='recent'?'刚刚已完成同步，当前为最新共享数据；一分钟后可再次拉取底表。':'已从腾讯底表刷新，其他访客将在 30 秒内同步。');
+  else if(silent&&changed)toast('已同步最新数据，保留当前筛选。');
+  return true;
+ }catch(error){
+  $('alert').textContent=(error.name==='TimeoutError'?'底表同步超时':error.message)+'；保留上次数据。';
+  if(!sharedSnapshot){try{
+   const cached=await fetch('data.json?t='+Date.now(),{cache:'no-store'});if(!cached.ok)throw Error();
+   const fallback=await cached.json();normalize(fallback);sharedSnapshot=JSON.stringify(fallback);
+   $('alert').textContent+=' 当前显示已发布备份，非最新同步结果。';
+  }catch{}}
+  return false;
+ }finally{sharedBusy=false;}})();
+ return loadPending;
+}
 for(const id of ['start','end','product','account','media','kind'])$(id).addEventListener('change',()=>{filters[id]=$(id).value;if(id==='start'||id==='end')syncCompare();visibleCards=24;render();});
 $('reset').addEventListener('click',()=>{filters={compareStart:'',compareEnd:'',start:'',end:'',product:'',account:'',media:'',kind:''};for(const id of ['product','account','media','kind'])$(id).value='';$('search').value='';$('newOnly').checked=false;$('compareAuto').checked=true;visibleCards=24;normalize(raw);});
 for(const id of ['search','sort','newOnly'])$(id).addEventListener(id==='search'?'input':'change',()=>{visibleCards=24;render();});
 $('more').addEventListener('click',()=>{visibleCards+=24;drawCards();});
-$('refresh').addEventListener('click',async()=>{const button=$('refresh');button.disabled=true;button.textContent='正在读取…';try{if(sharedMode){if(!await load(false,true))toast('读取失败或已有刷新任务，请稍后重试。');return;}const response=await fetch('/api/refresh',{method:'POST'}),data=await response.json();if(!response.ok)throw Error(data.error);normalize(data);toast('已重新读取下载目录中的 Excel。在线变更需先从腾讯文档重新导出。');}catch(error){toast('刷新失败，保留上次数据：'+error.message);}finally{button.disabled=false;button.textContent='↻ 刷新数据';}});
+$('refresh').addEventListener('click',async()=>{const button=$('refresh');button.disabled=true;button.textContent='正在读取…';try{if(sharedMode){if(!await load(false,true))toast('底表刷新失败，已保留上次数据；请查看顶部提示。');return;}const response=await fetch('/api/refresh',{method:'POST'}),data=await response.json();if(!response.ok)throw Error(data.error);normalize(data);toast('已重新读取下载目录中的 Excel。在线变更需先从腾讯文档重新导出。');}catch(error){toast('刷新失败，保留上次数据：'+error.message);}finally{button.disabled=false;button.textContent='↻ 刷新数据';}});
 $('importBtn').addEventListener('click',()=>{if(sharedMode){window.open('https://github.com/zhangsiri883-rgb/limomo-dashboard/upload/main','_blank','noopener');return;}$('file').click();});
 $('file').addEventListener('change',async()=>{const file=$('file').files[0];if(!file)return;try{const response=await fetch('/api/import',{method:'POST',body:file}),data=await response.json();if(!response.ok)throw Error(data.error);normalize(data);toast('已导入 '+file.name);}catch(error){toast('导入失败，保留上次数据：'+error.message);}$('file').value='';});
 document.addEventListener('click',event=>{
@@ -284,5 +312,5 @@ function initChartTooltips(){
 $('rankingMetric').addEventListener('change',render);
 initChartTooltips();
 initPerformance();
-if(sharedMode){$('importBtn').textContent='管理发布数据 ↗';$('importBtn').title='管理员更新仓库中的 data.json，部署完成后所有访客同步';setInterval(()=>{if(!document.hidden)load(true);},30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(true);});}
+if(sharedMode){$('importBtn').textContent='管理发布数据 ↗';$('importBtn').title='管理已发布的数据备份；刷新数据直接读取腾讯底表';setInterval(()=>{if(!document.hidden)load(true);},30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load(true);});}
 load();
