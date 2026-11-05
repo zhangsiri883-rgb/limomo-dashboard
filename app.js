@@ -16,7 +16,7 @@ let raw={},shop=[],links=[],notes=[],meta=[],tableState={},mediaBindings=new Map
 let filters={compareStart:'',compareEnd:'',start:'',end:'',product:'',account:'',media:'',kind:''};
 const columns={pay:['支付金额','money'],visitors:['商品访客数','num'],totalVisitors:['总访客数','num'],cart:['新增加购人数','num'],cartItems:['加购件数','num'],buyers:['支付买家数','num'],pv:['PV','pct'],cartRate:['加购率','pct'],payRate:['支付转化率','pct'],cartPayRate:['加购转化率','pct'],read:['笔记阅读量','num'],home:['引流主页次数','num'],noteCart:['笔记加购人数','num'],noteItems:['笔记加购件数','num'],like:['点赞数','num'],collect:['收藏数','num'],comment:['评论数','num'],follow:['新增关注次数','num'],shallow:['浅层互动率','pct'],deep:['深层互动率','pct'],homePay:['引流主页支付金额','money'],count:['发布总数','num'],commercial:['商品笔记数','num'],ordinary:['普通笔记数','num']};
 const pick=(r,keys)=>{for(const k of keys)if(r[k]!==undefined&&r[k]!==null&&r[k]!=='')return r[k];return null;};
-const performanceMetrics=[['销售指标','pay','支付金额','money'],['销售指标','totalVisitors','总访客数','num'],['销售指标','visitors','商品访客数','num'],['销售指标','pv','PV','pct'],['销售指标','cart','加购人数','num'],['销售指标','cartItems','加购件数','num'],['内容指标','pay','内容支付金额','money'],['内容指标','read','笔记阅读量','num'],['内容指标','home','引流主页次数','num'],['内容指标','noteItems','笔记加购件数','num'],['内容指标','like','点赞数','num'],['内容指标','collect','收藏数','num'],['内容指标','comment','评论数','num'],['内容指标','follow','新增关注次数','num'],['内容指标','shallow','浅层互动率','pct'],['内容指标','deep','深层互动率','pct']];
+const performanceMetrics=[['销售指标','pay','支付金额','money'],['销售指标','totalVisitors','总访客数','num'],['销售指标','visitors','商品访客数','num'],['销售指标','pv','PV','pct'],['销售指标','cart','加购人数','num'],['销售指标','cartItems','加购件数','num'],['内容指标','pay','内容支付金额','money'],['内容指标','read','笔记阅读量','num'],['内容指标','home','引流主页次数','num'],['内容指标','like','点赞数','num'],['内容指标','collect','收藏数','num'],['内容指标','comment','评论数','num'],['内容指标','follow','新增关注次数','num'],['内容指标','shallow','浅层互动率','pct'],['内容指标','deep','深层互动率','pct']];
 function monthBefore(value){if(!value)return '';const [year,month,day]=value.split('-').map(Number);const last=new Date(Date.UTC(year,month-1,0)).getUTCDate();return new Date(Date.UTC(year,month-2,Math.min(day,last))).toISOString().slice(0,10);}
 function syncCompare(){if($('compareAuto').checked||!filters.compareStart){filters.compareStart=monthBefore(filters.start);filters.compareEnd=monthBefore(filters.end);}$('compareStart').value=filters.compareStart;$('compareEnd').value=filters.compareEnd;}
 function initPerformance(){
@@ -128,7 +128,7 @@ function lineChart(id,rows,series){
    if(j===1)for(let i=0;i<=4;i++)svg+=`<text x="${w-right+8}" y="${top+ch*i/4+3}">${s.type==='pct'?pct(scales[j]*(1-i/4)):num(scales[j]*(1-i/4))}</text>`;
  }
  grouped.forEach((r,i)=>{if(grouped.length<12||i%Math.ceil(grouped.length/8)===0||i===grouped.length-1)svg+=`<text x="${x(i)}" y="${h-8}" text-anchor="middle">${r.name.slice(5)}</text>`;});
- $(id).innerHTML=`<div class="legend">${series.map((s,i)=>`<span><i style="background:${s.color}"></i>${esc(s.label)}${series.length>1?`（${i?'右':'左'}轴）`:''}</span>`).join('')}</div><div class="chart"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="每日指标趋势">${svg}</svg></div>`;
+ $(id).innerHTML=`<div class="legend">${series.map((s,i)=>`<span><i style="background:${s.color}"></i>${esc(s.label)}${series.length>2?`（独立标尺）`:series.length>1?`（${i?'右':'左'}轴）`:''}</span>`).join('')}</div><div class="chart"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="每日指标趋势">${svg}</svg></div>`;
 }
 
 function publicationTrend(published){
@@ -205,9 +205,9 @@ function render(){
  const lg=group(l,'product');visitorFunnel(totals);productRanking(lg);rankChart('linkChart',lg,'cart','buyers');
  table('linkTable',lg,['pay','visitors','cart','buyers','cartRate','payRate','cartPayRate'],'商品名',linkTotals,group(detailFilter?[]:links.filter(r=>inCompare(r)&&(!filters.product||r.product===filters.product)),'product'),aggregate(detailFilter?[]:links.filter(r=>inCompare(r)&&(!filters.product||r.product===filters.product))));
  lineChart('rateChart',l,[{key:'cartRate',label:'加购率',color:'#9690d0',type:'pct'},{key:'payRate',label:'支付转化率',color:'#176bc4',type:'pct'}]);
- kpis('contentKpis',[['内容支付金额',contentTotals.pay,'money'],['笔记阅读量',contentTotals.read],['引流主页次数',contentTotals.home],['笔记加购件数',contentTotals.noteItems],['点赞数',contentTotals.like],['收藏数',contentTotals.collect],['评论数',contentTotals.comment],['新增关注次数',contentTotals.follow],['浅层互动率',contentTotals.shallow,'pct'],['深层互动率',contentTotals.deep,'pct']]);
+ kpis('contentKpis',[['内容支付金额',contentTotals.pay,'money'],['笔记阅读量',contentTotals.read],['引流主页次数',contentTotals.home],['点赞数',contentTotals.like],['收藏数',contentTotals.collect],['评论数',contentTotals.comment],['新增关注次数',contentTotals.follow],['浅层互动率',contentTotals.shallow,'pct'],['深层互动率',contentTotals.deep,'pct']]);
  lineChart('contentChart',n,[{key:'read',label:'阅读量',color:'#176bc4'},{key:'home',label:'引流主页次数',color:'#e66b39'}]);mediaChart(n);
- addComparisons('contentKpis',['pay','read','home','noteItems','like','collect','comment','follow','shallow','deep'],contentTotals,previousContent);
+ addComparisons('contentKpis',['pay','read','home','like','collect','comment','follow','shallow','deep'],contentTotals,previousContent);
  const published=meta.filter(r=>inDate(r.publish)&&dimensions(r));
  const publicationProducts=[...new Set([...meta.filter(dimensions).map(r=>r.product),...(!filters.account&&!filters.media&&!filters.kind?links.filter(r=>!filters.product||r.product===filters.product).map(r=>r.product):[])])].sort((a,b)=>a.localeCompare(b,'zh-CN'));
  const countRows=rows=>{const groups=new Map(group(rows,'product').map(g=>[g.name,g._rows]));return publicationProducts.map(name=>{const list=groups.get(name)||[];return {name,count:list.length,commercial:list.filter(r=>r.kind==='商品笔记').length,ordinary:list.filter(r=>r.kind==='普通笔记').length};});};
@@ -219,23 +219,53 @@ function render(){
  const hasPriorPublication=meta.some(r=>r.publish>=filters.compareStart&&r.publish<=filters.compareEnd);
  table('publishTable',pg,['count','commercial','ordinary'],'商品名',pc,hasPriorPublication?countRows(previousPublished):[],hasPriorPublication?countTotal(previousPublished):null);
  publicationTrend(published);
- const effectKeys=['pay','read','home','noteItems','like','collect','comment','follow','shallow','deep'];
- for(const [id,key,label]of [['effectProduct','product','商品名'],['effectAccount','account','账号'],['effectMedia','media','素材类型'],['effectKind','kind','笔记类型']])table(id,group(n,key),effectKeys,label,contentTotals,group(notes.filter(r=>inCompare(r)&&dimensions(r)),key),previousContent);
+ const effectKeys=['pay','publishedCount','read','home','noteItems','like','collect','comment','follow','shallow','deep'];
+ columns.publishedCount=['发布数量','num'];
+ for(const [id,key,label]of [['effectProduct','product','商品名'],['effectAccount','account','账号'],['effectMedia','media','素材类型'],['effectKind','kind','笔记类型']]){
+  const withCounts=(rows,publications)=>{
+   const counts=new Map(group(publications,key).map(row=>[row.name,row._rows.length]));
+   const result=group(rows,key).map(row=>({...row,publishedCount:counts.get(row.name)||0}));
+   for(const [name,count]of counts)if(!result.some(row=>row.name===name))result.push({...aggregate([]),name,publishedCount:count});
+   return result;
+  };
+  table(id,withCounts(n,published),id==='effectKind'?effectKeys:effectKeys.filter(metric=>metric!=='noteItems'),label,{...contentTotals,publishedCount:published.length},withCounts(notes.filter(r=>inCompare(r)&&dimensions(r)),previousPublished),{...previousContent,publishedCount:hasPriorPublication?previousPublished.length:null});
+ }
  currentMaterial=group(n,'id').map(g=>({...g._rows[0],...g}));
  if($('newOnly').checked)currentMaterial=currentMaterial.filter(r=>inDate(r.publish));
  const query=$('search').value.trim().toLowerCase();if(query)currentMaterial=currentMaterial.filter(r=>[r.title,r.product,r.account].join(' ').toLowerCase().includes(query));
  const key=$('sort').value;currentMaterial.sort((a,b)=>key==='publish'?b.publish.localeCompare(a.publish):(b[key]??-1)-(a[key]??-1));
  drawCards();
 }
-function getMedia(r){return mediaBindings.get(r.id)|| (r.video?[{type:'video',url:r.video}]:coverScreenshots[r.id]?[{type:'image',url:coverScreenshots[r.id]}]:r.cover?[{type:'image',url:r.cover}]:[]);}
+function getMedia(r){return mediaBindings.get(r.id)|| (r.video?[{type:'video',url:r.video}]:r.cover?[{type:'image',url:r.cover}]:coverScreenshots[r.id]?[{type:'image',url:coverScreenshots[r.id]}]:[]);}
 function drawCards(){
  $('materialInfo').textContent=`符合筛选 ${currentMaterial.length} 篇 · 每篇合并当期效果 · 素材来源：底表笔记链接；可打开笔记预览，也可绑定本地素材`;
  $('cards').innerHTML=currentMaterial.slice(0,visibleCards).map((r,i)=>{
  const media=getMedia(r)[0];const cover=media?(media.type==='video'?`<video controls playsinline preload="auto" data-first-frame src="${esc(media.url)}"></video>`:`<img src="${esc(media.url)}" alt="${esc(r.title)}" loading="lazy">`):`<div class="placeholder"><strong>▷</strong>${r.url?'笔记链接素材':'无笔记链接'}<small>${r.url?'点击预览笔记素材':'可绑定本地图片或视频'}</small>${r.url?`<button data-preview="${esc(r.id)}">预览素材</button>`:''}</div>`;
- return `<article class="material"><div class="cover">${cover}<div class="badges"><span class="badge">#${i+1}　${esc(r.media)}</span><span class="badge">${esc(r.kind)}</span></div><button class="bind" data-bind="${esc(r.id)}">＋ 绑定素材</button></div><div class="cardbody"><h3 title="${esc(r.title)}">${esc(r.title)}</h3><div class="meta">${esc(r.product)} · ${esc(r.account)}<br>发布：${esc(r.publish||'未提供')}${r.publishSource==='创建时间'?'（创建时间）':''}</div><div class="metrics">${[['read','阅读量'],['like','点赞'],['collect','收藏'],['comment','评论'],['follow','新增关注'],['home','引流主页']].map(([key,label])=>`<div class="metric"><span>${label}</span><b>${r[key]===null?'—':num(r[key])}</b></div>`).join('')}</div><div class="rates"><div>浅层互动率<b>${pct(r.shallow)}</b></div><div>深层互动率<b>${pct(r.deep)}</b></div></div><div class="meta">支付金额 ${money(r.pay)}<br>加购件数 ${num(r.noteItems)}${r._missing?.pay>0&&r.pay!==null?' · 部分记录无成交字段':''}</div><div class="cardfoot"><button data-preview="${esc(r.id)}">⤢ 放大预览${getMedia(r).length>1?` (${getMedia(r).length})`:''}</button>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">查看原笔记 ↗</a>`:'<span class="na">无笔记链接</span>'}</div></div></article>`;
+ return `<article class="material"><div class="cover">${cover}<div class="badges"><span class="badge">#${i+1}　${esc(r.media)}</span><span class="badge">${esc(r.kind)}</span></div><button class="bind" data-bind="${esc(r.id)}">＋ 绑定素材</button>${r.url?`<a class="originalNote" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">查看原笔记 ↗</a>`:''}</div><div class="cardbody"><h3 title="${esc(r.title)}">${esc(r.title)}</h3><div class="meta">${esc(r.product)} · ${esc(r.account)}<br>发布：${esc(r.publish||'未提供')}${r.publishSource==='创建时间'?'（创建时间）':''}</div><div class="metrics">${[['read','阅读量'],['like','点赞'],['collect','收藏'],['comment','评论'],['follow','新增关注'],['home','引流主页']].map(([key,label])=>`<div class="metric"><span>${label}</span><b>${r[key]===null?'—':num(r[key])}</b></div>`).join('')}</div><div class="rates"><div>浅层互动率<b>${pct(r.shallow)}</b></div><div>深层互动率<b>${pct(r.deep)}</b></div></div><div class="meta">支付金额 ${money(r.pay)}${r._missing?.pay>0&&r.pay!==null?' · 部分记录无成交字段':''}</div><div class="cardfoot"><button data-trend="${esc(r.id)}" aria-expanded="false">展开看趋势 ▾</button></div><div class="noteTrend" data-note-trend="${esc(r.id)}" hidden></div></div></article>`;
  }).join('')||'<div class="empty">当前筛选范围没有笔记</div>';
- $('more').hidden=currentMaterial.length<=visibleCards;initFirstFrames($('cards'));
+ $('more').hidden=currentMaterial.length<=visibleCards;initFirstFrames($('cards'));for(const noteId of expandedNoteTrends){const button=[...$('cards').querySelectorAll('[data-trend]')].find(element=>element.dataset.trend===noteId);if(button){button.setAttribute('aria-expanded','true');button.textContent='收起趋势 ▴';const panel=button.closest('.cardbody').querySelector('.noteTrend');panel.hidden=false;renderNoteTrend(noteId);}}
 }
+const noteTrendKeys=['read','home','pay','like','collect','comment','follow','shallow','deep'];
+const noteTrendSelections=new Map();
+const expandedNoteTrends=new Set();
+function renderNoteTrend(noteId){
+ const panel=[...document.querySelectorAll('[data-note-trend]')].find(element=>element.dataset.noteTrend===noteId);
+ if(!panel)return;
+ const selected=noteTrendSelections.get(noteId)||['read','home'];
+ const chartId='noteTrend-'+noteId.replace(/[^a-z0-9_-]/gi,'_');
+ panel.innerHTML=`<div class="noteTrendOptions">${noteTrendKeys.map(key=>`<label><input type="checkbox" data-note-metric="${esc(noteId)}" value="${key}" ${selected.includes(key)?'checked':''}>${columns[key][0]}</label>`).join('')}</div><p class="chartNote">${esc(filters.start)} ～ ${esc(filters.end)} · 按底表日期统计；各指标使用独立标尺，悬停显示具体数据。</p><div id="${chartId}"></div>`;
+ const colors=['#176bc4','#e66b39','#9690d0','#218c76','#d05e83','#a18138','#5a9ad0','#617b36','#bd6a39'];
+ const rows=notes.filter(row=>row.id===noteId&&inDate(row.date)&&dimensions(row));
+ if(!selected.length){$(chartId).innerHTML='<div class="empty">请选择至少一个指标</div>';return;}
+ lineChart(chartId,rows,selected.map(key=>({key,label:columns[key][0],type:columns[key][1],color:colors[noteTrendKeys.indexOf(key)]})));
+}
+document.addEventListener('change',event=>{
+ const control=event.target.closest('[data-note-metric]');if(!control)return;
+ const noteId=control.dataset.noteMetric;
+ const panel=control.closest('.noteTrend');
+ noteTrendSelections.set(noteId,[...panel.querySelectorAll('input:checked')].map(input=>input.value));
+ renderNoteTrend(noteId);
+});
 function initFirstFrames(root){
  for(const video of root.querySelectorAll('video[data-first-frame]')){
   const first=()=>{video.pause();if(video.currentTime!==0)video.currentTime=0;};
@@ -282,6 +312,7 @@ $('file').addEventListener('change',async()=>{const file=$('file').files[0];if(!
 document.addEventListener('click',event=>{
  const th=event.target.closest('th[data-table]');if(th){const s=tableState[th.dataset.table];s.direction=s.sort===th.dataset.key?-s.direction:-1;s.sort=th.dataset.key;drawTable(th.dataset.table);}
  const rank=event.target.closest('[data-product]');if(rank){filters.product=rank.dataset.product;$('product').value=filters.product;render();}
+ const trend=event.target.closest('[data-trend]');if(trend){const noteId=trend.dataset.trend,panel=trend.closest('.cardbody').querySelector('.noteTrend');const expanded=trend.getAttribute('aria-expanded')!=='true';trend.setAttribute('aria-expanded',String(expanded));trend.textContent=expanded?'收起趋势 ▴':'展开看趋势 ▾';panel.hidden=!expanded;if(expanded){expandedNoteTrends.add(noteId);renderNoteTrend(noteId);}else expandedNoteTrends.delete(noteId);}
  const bind=event.target.closest('[data-bind]');if(bind){currentBind=bind.dataset.bind;$('mediaFile').click();}
  const preview=event.target.closest('[data-preview]');if(preview){const r=currentMaterial.find(r=>r.id===preview.dataset.preview),media=getMedia(r);$('previewBody').innerHTML=`<h3>${esc(r.title)}</h3>`+(media.length?media.map(m=>m.type==='video'?`<video controls playsinline preload="auto" data-first-frame src="${esc(m.url)}"></video>`:`<img src="${esc(m.url)}" alt="${esc(r.title)}">`).join(''):(r.url?`<p class="sub">来源：笔记链接。若平台限制嵌入或要求登录，请点击原笔记打开。</p><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">打开原笔记 ↗</a><iframe class="noteFrame" src="${esc(r.url)}" title="笔记素材预览" referrerpolicy="no-referrer"></iframe>`:'<div class="empty">未提供笔记链接，可绑定本地素材。</div>'));$('preview').showModal();initFirstFrames($('previewBody'));}
  const exporter=event.target.closest('[data-export]');if(exporter){const s=tableState[exporter.dataset.export];const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';const csv='\ufeff'+[[s.first,...s.keys.map(k=>columns[k][0])],...s.rows.map(r=>[r.name,...s.keys.map(k=>r[k]??'未提供')])].map(row=>row.map(quote).join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=`${s.first}汇总_${filters.start}_${filters.end}.csv`;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}

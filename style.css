@@ -43,3 +43,20 @@ input[type=date],input[type=date]::-webkit-datetime-edit{font-size:13px;font-wei
 #publishTable th,#publishTable td{padding:7px 9px}
 #publishTable .tablewrap{height:380px;max-height:380px}
 .publicationLayout>article{height:380px}
+
+#contentKpis{grid-template-columns:repeat(9,minmax(112px,1fr));gap:9px;overflow-x:auto}
+#contentKpis .kpi{padding:14px 10px;min-height:112px}
+#contentKpis .value{font-size:22px}
+#contentKpis .comparison{font-size:10px;padding:3px 4px}
+#effects td,#effects th{padding:9px 10px;vertical-align:middle}
+#effects td .comparison{margin-top:3px;padding:2px 5px;line-height:1.4}
+.material .cardbody h3{height:auto;min-height:0;line-height:1.6;margin:0;overflow:visible}
+.material .cardbody .meta{margin:7px 0 10px}
+.cards{align-items:start}
+.originalNote{position:absolute;right:12px;bottom:12px;z-index:3;background:#ffffffed;border:1px solid #cfe0f5;border-radius:8px;padding:8px 10px;font-size:11px}
+.noteTrend{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+.noteTrend[hidden]{display:none}
+.noteTrendOptions{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--navy)}
+.noteTrendOptions label{display:flex;align-items:center;gap:3px}
+.noteTrend .legend{flex-wrap:wrap;gap:6px}
+.noteTrend .chart svg{height:220px}
