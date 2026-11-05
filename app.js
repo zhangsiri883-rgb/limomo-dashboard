@@ -71,7 +71,7 @@ function normalize(data){
    const value=$(id).value;$(id).innerHTML=`<option value="">全部${id==='product'?'商品':id==='account'?'账号':'素材'}</option>`+[...new Set(list.map(r=>r[key]).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
    if([...$(id).options].some(o=>o.value===value))$(id).value=value;else filters[id]='';
  }
- if(!filters.end){filters.end=allDates.at(-1)||'';const d=new Date(filters.end+'T00:00:00');d.setDate(d.getDate()-6);filters.start=d.toLocaleDateString('en-CA');if(!/^\d{4}-/.test(filters.start))filters.start=d.toISOString().slice(0,10);}
+ if(!filters.end){const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const today=Object.fromEntries(parts.map(part=>[part.type,part.value]));filters.start=`${today.year}-${today.month}-01`;filters.end=new Date(Date.UTC(Number(today.year),Number(today.month)-1,Number(today.day)-1)).toISOString().slice(0,10);}
  $('start').value=filters.start;$('end').value=filters.end;syncCompare();
  render();
 }

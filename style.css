@@ -39,3 +39,7 @@ input[type=date],input[type=date]::-webkit-datetime-edit{font-size:13px;font-wei
 @media(max-width:900px){.publicationLayout{grid-template-columns:1fr}.publicationLayout>article{height:420px}}
 @media(min-width:1251px){#shopKpis{grid-template-columns:repeat(7,minmax(0,1fr))}}
 #publishTable td .comparison{display:inline-block;margin:0 0 0 8px;vertical-align:middle;white-space:nowrap}
+#publishTable tbody tr,#publishTable tfoot tr{height:48px}
+#publishTable th,#publishTable td{padding:7px 9px}
+#publishTable .tablewrap{height:380px;max-height:380px}
+.publicationLayout>article{height:380px}
