@@ -38,3 +38,4 @@ input[type=date],input[type=date]::-webkit-datetime-edit{font-size:13px;font-wei
 #publishTrend .chart svg{height:100%;min-height:0}
 @media(max-width:900px){.publicationLayout{grid-template-columns:1fr}.publicationLayout>article{height:420px}}
 @media(min-width:1251px){#shopKpis{grid-template-columns:repeat(7,minmax(0,1fr))}}
+#publishTable td .comparison{display:inline-block;margin:0 0 0 8px;vertical-align:middle;white-space:nowrap}
