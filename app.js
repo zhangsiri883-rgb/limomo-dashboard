@@ -53,6 +53,8 @@ function performanceChart(){
 function normalize(data){
  raw=data;shop=(data['店铺数据']||[]).filter(r=>date(r['日期'])&&numeric(r['总访客数'])!==null).map(r=>({date:date(r['日期']),product:String(pick(r,['统一商品名','商品名'])||''),pay:numeric(r['支付金额']),totalVisitors:numeric(r['总访客数']),visitors:numeric(r['商品访客数']),cart:numeric(r['新增加购人数']),cartItems:numeric(r['新增加购件数'])}));
  links=(data['链接数据']||[]).filter(r=>date(r['日期'])&&r['统一商品名']).map(r=>({date:date(r['日期']),product:String(r['统一商品名']).trim(),pay:numeric(r['支付金额']),visitors:numeric(r['商品访客数']),cart:numeric(r['新增加购人数']),buyers:numeric(r['支付买家数'])}));
+ const shopSource=(data['店铺数据']||[]).filter(row=>date(row['日期'])&&numeric(row['总访客数'])!==null);
+ shop.forEach((record,index)=>{record.shopPageVisitors=numeric(shopSource[index]['店铺页访问人数']);});
  notes=[];
  for(const [sheet,kind]of [['商笔数据','商品笔记'],['普笔数据','普通笔记']])for(const [i,r]of (data[sheet]||[]).entries()){
    if(!date(r['日期'])||!(r['笔记ID']||r['笔记链接']||r['笔记标题']))continue;
@@ -75,7 +77,7 @@ function normalize(data){
 }
 const inDate=(d)=>!!d&&d>=filters.start&&d<=filters.end;
 const dimensions=r=>(!filters.product||r.product===filters.product)&&(!filters.account||r.account===filters.account)&&(!filters.media||r.media===filters.media)&&(!filters.kind||r.kind===filters.kind);
-const metricKeys=['pay','visitors','totalVisitors','cart','cartItems','buyers','read','home','noteItems','like','collect','comment','follow','homePay'];
+const metricKeys=['pay','visitors','totalVisitors','shopPageVisitors','cart','cartItems','buyers','read','home','noteItems','like','collect','comment','follow','homePay'];
 function aggregate(rows){
  const result={_missing:{},_total:rows.length};
  for(const key of metricKeys){const values=rows.map(r=>r[key]).filter(v=>v!==null&&v!==undefined);result[key]=values.length?values.reduce((a,b)=>a+b,0):null;result._missing[key]=rows.length-values.length;}
@@ -196,9 +198,9 @@ function render(){
  $('period').textContent=`当期 ${filters.start} ～ ${filters.end} · 对比 ${filters.compareStart} ～ ${filters.compareEnd}`;
  const alerts=[];if(shopUnavailable)alerts.push('店铺底表不具备当前商品／内容维度，经营总览不展示未筛选的全店数据。');if(detailFilter)alerts.push('链接底表没有账号、素材及笔记类型维度，当前链接分析显示无维度数据。');
  $('alert').textContent=alerts.join(' ');
- kpis('shopKpis',[['支付金额',totals.pay,'money'],['总访客数',totals.totalVisitors],['商品访客数',totals.visitors],['PV',totals.pv,'pct'],['加购人数',totals.cart],['加购件数',totals.cartItems]],shopUnavailable?'该维度无数据':'无数据');
- $('shopNote').textContent='PV＝商品访客数 ÷ 总访客数。跨日人数为每日人数之和，非周期去重人数。';
- addComparisons('shopKpis',['pay','totalVisitors','visitors','pv','cart','cartItems'],totals,previousShop);
+ kpis('shopKpis',[['支付金额',totals.pay,'money'],['总访客数',totals.totalVisitors],['店铺页访问人数',totals.shopPageVisitors],['商品访客数',totals.visitors],['PV',totals.pv,'pct'],['加购人数',totals.cart],['加购件数',totals.cartItems]],shopUnavailable?'该维度无数据':'无数据');
+ $('shopNote').textContent='PV＝商品访客数 ÷ 总访客数。跨日人数为每日人数之和，非周期去重人数。'+(totals._missing.shopPageVisitors?' 店铺页访问人数：部分日期未提供，仅汇总已填写数据。':'');
+ addComparisons('shopKpis',['pay','totalVisitors','shopPageVisitors','visitors','pv','cart','cartItems'],totals,previousShop);
  performanceChart();
  const lg=group(l,'product');visitorFunnel(totals);productRanking(lg);rankChart('linkChart',lg,'cart','buyers');
  table('linkTable',lg,['pay','visitors','cart','buyers','cartRate','payRate','cartPayRate'],'商品名',linkTotals,group(detailFilter?[]:links.filter(r=>inCompare(r)&&(!filters.product||r.product===filters.product)),'product'),aggregate(detailFilter?[]:links.filter(r=>inCompare(r)&&(!filters.product||r.product===filters.product))));
