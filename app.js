@@ -51,7 +51,7 @@ function performanceChart(){
  $('shopChart').innerHTML=`<div class="legend performanceLegend">${legend}</div>${any?`<div class="chart"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="勾选指标的当期与对比期趋势">${svg}</svg></div>`:'<div class="empty">所选指标在当前筛选范围无数据</div>'}<p class="chartNote">当期 ${filters.start} ～ ${filters.end} · 对比 ${filters.compareStart} ～ ${filters.compareEnd}${!compareDays.some(d=>[...shop,...notes].some(r=>r.date===d))?' · 对比期暂无底表数据':''}</p>`;
 }
 function normalize(data){
- raw=data;shop=(data['店铺数据']||[]).filter(r=>date(r['日期'])&&numeric(r['总访客数'])!==null).map(r=>({date:date(r['日期']),product:String(pick(r,['统一商品名','商品名'])||''),pay:numeric(r['支付金额']),totalVisitors:numeric(r['总访客数']),visitors:numeric(r['商品访客数']),cart:numeric(r['新增加购人数']),cartItems:numeric(r['新增加购件数'])}));
+ raw=data;shop=(data['店铺数据']||[]).filter(r=>date(r['日期'])&&numeric(r['总访客数'])!==null).map(r=>({date:date(r['日期']),product:String(pick(r,['统一商品名','商品名'])||''),pay:numeric(r['支付金额']),totalVisitors:numeric(r['总访客数']),visitors:numeric(r['商品访客数']),cart:numeric(r['新增加购人数']),cartItems:numeric(r['新增加购件数']),buyers:numeric(r['支付买家数'])}));
  links=(data['链接数据']||[]).filter(r=>date(r['日期'])&&r['统一商品名']).map(r=>({date:date(r['日期']),product:String(r['统一商品名']).trim(),pay:numeric(r['支付金额']),visitors:numeric(r['商品访客数']),cart:numeric(r['新增加购人数']),buyers:numeric(r['支付买家数'])}));
  const shopSource=(data['店铺数据']||[]).filter(row=>date(row['日期'])&&numeric(row['总访客数'])!==null);
  shop.forEach((record,index)=>{record.shopPageVisitors=numeric(shopSource[index]['店铺页访问人数']);});
@@ -148,21 +148,21 @@ function publicationTrend(published){
 }
 
 function visitorFunnel(totals){
- const stages=[['全店访客',totals.totalVisitors],['商品访客',totals.visitors],['加购人数',totals.cart]];
- if(stages.some(([,value])=>value===null)){$('productChart').innerHTML='<div class="empty">当前筛选维度无店铺访客数据</div>';return;}
+ const stages=[['全店访客',totals.totalVisitors],['商品访客',totals.visitors],['加购人数',totals.cart],['支付买家数',totals.buyers]];
+ if(stages.every(([,value])=>value===null)){$('productChart').innerHTML='<div class="empty">当前筛选维度无店铺访客数据</div>';return;}
  const maximum=Math.max(1,...stages.map(([,value])=>value));
- const colors=['#176bc4','#4d96dc','#8dbbea'];
- const w=600,center=230,available=380,top=18,height=65,gap=35;
+ const colors=['#176bc4','#4d96dc','#8dbbea','#b3d3ef'];
+ const w=600,center=230,available=380,top=12,height=48,gap=28;
  let svg='';
  stages.forEach(([label,value],i)=>{
   const y=top+i*(height+gap),width=available*value/maximum;
-  const next=i<stages.length-1?available*stages[i+1][1]/maximum:width*.7;
+  const next=i<stages.length-1&&stages[i+1][1]!==null?available*stages[i+1][1]/maximum:width*.7;
   const a=Math.max(4,width),b=Math.max(3,next);
   svg+=`<polygon points="${center-a/2},${y} ${center+a/2},${y} ${center+b/2},${y+height} ${center-b/2},${y+height}" fill="${colors[i]}"><title>${label}：${num(value)}人</title></polygon>`;
-  svg+=`<text x="450" y="${y+25}" fill="#42617e" font-size="14">${label}</text><text x="450" y="${y+49}" fill="#163f6c" font-size="20" font-weight="bold">${num(value)} 人</text>`;
-  if(i<stages.length-1)svg+=`<text x="${center}" y="${y+height+23}" text-anchor="middle" fill="#7d91a8" font-size="12">↓ 转化率 ${pct(ratio(stages[i+1][1],value))}</text>`;
+  svg+=`<text x="450" y="${y+18}" fill="#42617e" font-size="14">${label}</text><text x="450" y="${y+40}" fill="#163f6c" font-size="20" font-weight="bold">${value===null?'暂无数据':num(value)+' 人'}</text>`;
+  if(i<stages.length-1)svg+=`<text x="${center}" y="${y+height+19}" text-anchor="middle" fill="#7d91a8" font-size="12">↓ 转化率 ${pct(ratio(stages[i+1][1],value))}</text>`;
  });
- $('productChart').innerHTML=`<div class="visitorFunnel"><svg viewBox="0 0 600 295" role="img" aria-label="全店访客到商品访客到加购人数漏斗">${svg}</svg></div><p class="chartNote">整体加购率 ${pct(ratio(totals.cart,totals.totalVisitors))} · 人数为所选周期每日人数之和；阶段人数不代表同一批用户追踪。</p>`;
+ $('productChart').innerHTML=`<div class="visitorFunnel"><svg viewBox="0 0 600 295" role="img" aria-label="全店访客到商品访客到加购人数到支付买家数漏斗">${svg}</svg></div><p class="chartNote">整体加购率 ${pct(ratio(totals.cart,totals.totalVisitors))} · 整体支付转化率 ${pct(ratio(totals.buyers,totals.totalVisitors))} · 人数为所选周期每日人数之和；阶段人数不代表同一批用户追踪。</p>`;
 }
 function rankChart(id,rows,key='pay',second=''){
  rows=[...rows].sort((a,b)=>(b[key]||0)-(a[key]||0)).slice(0,8);const max=Math.max(0,...rows.map(r=>r[key]||0),...rows.map(r=>r[second]||0))||1;
