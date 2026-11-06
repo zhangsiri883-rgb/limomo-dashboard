@@ -238,7 +238,7 @@ function render(){
 }
 let cloudMedia={},coverJobs={};
 try{const params=new URLSearchParams(location.hash.slice(1));if(params.has('uploadKey')){localStorage.setItem('limomoMediaKey',params.get('uploadKey'));history.replaceState(null,'',location.pathname+location.search+'#materials');}}catch{}
-async function loadCloudMedia(){try{const response=await fetch(syncService+'/media',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)return;const index=await response.json();try{const status=await fetch(syncService+'/cover-status',{cache:'no-store'});if(status.ok)coverJobs=await status.json();}catch{}cloudMedia=Object.fromEntries(Object.entries(index).map(([id,items])=>[id,items.map(m=>({type:m.type,url:syncService+m.url}))]));drawCards();}catch{}}
+async function loadCloudMedia(){try{const response=await fetch(syncService+'/media',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)return;const index=await response.json();try{const status=await fetch(syncService+'/cover-status',{cache:'no-store',signal:AbortSignal.timeout(5000)});if(status.ok)coverJobs=await status.json();}catch{}cloudMedia=Object.fromEntries(Object.entries(index).map(([id,items])=>[id,items.map(m=>({type:m.type,url:syncService+m.url}))]));drawCards();}catch{}}
 function requestMediaKey(){return new Promise(resolve=>{const dialog=document.createElement('dialog');dialog.innerHTML='<form method="dialog"><h3>素材管理授权</h3><p class="sub">输入管理密钥后，此浏览器会记住授权。</p><input name="key" type="password" aria-label="素材管理密钥" autocomplete="off" required><p style="margin-top:14px"><button value="cancel" formnovalidate>取消</button> <button value="save" class="primary">授权并保存</button></p></form>';document.body.append(dialog);dialog.addEventListener('close',()=>{const value=dialog.returnValue==='save'?dialog.querySelector('input').value.trim():null;dialog.remove();resolve(value);},{once:true});dialog.showModal();});}
 async function prepareImage(file){
  if(!file.type.startsWith('image/'))throw Error('云端绑定目前支持图片；视频请上传首帧截图。');
@@ -289,7 +289,7 @@ function toast(message){$('toast').textContent=message;$('toast').style.display=
 async function load(silent=false,force=false){
  if(sharedBusy){if(!force)return loadPending;await loadPending;}
  sharedBusy=true;
- if(sharedMode)await loadCloudMedia();
+ if(sharedMode)loadCloudMedia();
  loadPending=(async()=>{try{
   const url=sharedMode?syncService+(force?'/refresh':'/data'):'data.json?t='+Date.now();
   const response=await fetch(url,{method:sharedMode&&force?'POST':'GET',cache:'no-store',signal:AbortSignal.timeout(120000)});
