@@ -236,7 +236,18 @@ function render(){
  const key=$('sort').value;currentMaterial.sort((a,b)=>key==='publish'?b.publish.localeCompare(a.publish):(b[key]??-1)-(a[key]??-1));
  drawCards();
 }
-function getMedia(r){return mediaBindings.get(r.id)|| (r.video?[{type:'video',url:r.video}]:r.cover?[{type:'image',url:r.cover}]:coverScreenshots[r.id]?[{type:'image',url:coverScreenshots[r.id]}]:[]);}
+let cloudMedia={};
+try{const params=new URLSearchParams(location.hash.slice(1));if(params.has('uploadKey')){localStorage.setItem('limomoMediaKey',params.get('uploadKey'));history.replaceState(null,'',location.pathname+location.search+'#materials');}}catch{}
+async function loadCloudMedia(){try{const response=await fetch(syncService+'/media',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)return;const index=await response.json();cloudMedia=Object.fromEntries(Object.entries(index).map(([id,items])=>[id,items.map(m=>({type:m.type,url:syncService+m.url}))]));drawCards();}catch{}}
+async function prepareImage(file){
+ if(!file.type.startsWith('image/'))throw Error('云端绑定目前支持图片；视频请上传首帧截图。');
+ const bitmap=await createImageBitmap(file);try{
+ const canvas=document.createElement('canvas'),scale=Math.min(1,1200/Math.max(bitmap.width,bitmap.height));canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+ for(let quality=.85;quality>=.25;quality-=.1){const data=canvas.toDataURL('image/jpeg',quality).split(',')[1];if(data.length<=120000)return data;}
+ throw Error('图片过大，请缩小后上传。');
+ }finally{bitmap.close();}
+}
+function getMedia(r){return cloudMedia[r.id]||mediaBindings.get(r.id)|| (r.video?[{type:'video',url:r.video}]:r.cover?[{type:'image',url:r.cover}]:coverScreenshots[r.id]?[{type:'image',url:coverScreenshots[r.id]}]:[]);}
 function drawCards(){
  $('materialInfo').textContent=`符合筛选 ${currentMaterial.length} 篇 · 每篇合并当期效果 · 素材来源：底表笔记链接；可打开笔记预览，也可绑定本地素材`;
  $('cards').innerHTML=currentMaterial.slice(0,visibleCards).map((r,i)=>{
@@ -277,6 +288,7 @@ function toast(message){$('toast').textContent=message;$('toast').style.display=
 async function load(silent=false,force=false){
  if(sharedBusy){if(!force)return loadPending;await loadPending;}
  sharedBusy=true;
+ if(sharedMode)await loadCloudMedia();
  loadPending=(async()=>{try{
   const url=sharedMode?syncService+(force?'/refresh':'/data'):'data.json?t='+Date.now();
   const response=await fetch(url,{method:sharedMode&&force?'POST':'GET',cache:'no-store',signal:AbortSignal.timeout(120000)});
@@ -318,7 +330,13 @@ document.addEventListener('click',event=>{
  const exporter=event.target.closest('[data-export]');if(exporter){const s=tableState[exporter.dataset.export];const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';const csv='\ufeff'+[[s.first,...s.keys.map(k=>columns[k][0])],...s.rows.map(r=>[r.name,...s.keys.map(k=>r[k]??'未提供')])].map(row=>row.map(quote).join(',')).join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=`${s.first}汇总_${filters.start}_${filters.end}.csv`;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 });
 document.addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.matches('th[data-table]'))event.target.click();});
-$('mediaFile').addEventListener('change',()=>{const files=[...$('mediaFile').files];if(!files.length)return;const old=mediaBindings.get(currentBind)||[];old.forEach(m=>URL.revokeObjectURL(m.url));mediaBindings.set(currentBind,files.map(file=>({type:file.type.startsWith('video/')?'video':'image',url:URL.createObjectURL(file)})));$('mediaFile').value='';drawCards();toast('素材已绑定，可在当前会话内预览。');});
+$('mediaFile').addEventListener('change',async()=>{const files=[...$('mediaFile').files],id=currentBind;$('mediaFile').value='';if(!files.length)return;try{
+ if(files.length>6)throw Error('每次最多绑定6张图片。');
+ let key=localStorage.getItem('limomoMediaKey');if(!key){key=prompt('请输入素材管理密钥（仅管理者上传需要）：');if(!key)return;}
+ toast('正在压缩并保存图片到云端…');const images=await Promise.all(files.map(prepareImage));
+ const response=await fetch(syncService+'/media',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({id,images}),signal:AbortSignal.timeout(60000)});const result=await response.json();if(!response.ok)throw Error(result.error||'保存失败');
+ localStorage.setItem('limomoMediaKey',key);cloudMedia[id]=result.items.map(m=>({type:m.type,url:syncService+m.url}));drawCards();toast('素材已保存到云端，刷新后保留，其他人也可查看。');
+ }catch(error){toast('素材未保存：'+error.message);}});
 $('closePreview').addEventListener('click',()=>{$('preview').close();$('previewBody').innerHTML='';});
 $('preview').addEventListener('close',()=>{$('previewBody').innerHTML='';});
 const observer=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('active',a.hash==='#'+entry.target.id));}},{rootMargin:'-170px 0px -60% 0px'});document.querySelectorAll('main section[id]').forEach(s=>observer.observe(s));
