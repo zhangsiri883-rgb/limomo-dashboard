@@ -63,3 +63,7 @@ input[type=date],input[type=date]::-webkit-datetime-edit{font-size:13px;font-wei
 
 /* Material card conversion rates share one row. */
 .material .rates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.material .rates>div{min-width:0}.material .rates>div:nth-child(3){background:#eaf3ff;color:#176bc4}
+
+/* Compact materials: four cards across on desktop. */
+@media(min-width:1101px){.cards{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}}
+.material{padding:12px}.material .cardbody{padding:12px 8px}.material .rates{gap:5px;margin:9px 0}.material .rates>div{padding:7px 5px;font-size:10px}.material .rates b{font-size:15px}.material .rates>div:nth-child(3) b{color:#176bc4}.material .metric{padding:9px 4px}.material .metric b{font-size:17px}.material .bind,.material .originalNote{padding:7px 8px;font-size:10px}
