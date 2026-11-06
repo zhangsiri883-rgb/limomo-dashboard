@@ -239,6 +239,7 @@ function render(){
 let cloudMedia={};
 try{const params=new URLSearchParams(location.hash.slice(1));if(params.has('uploadKey')){localStorage.setItem('limomoMediaKey',params.get('uploadKey'));history.replaceState(null,'',location.pathname+location.search+'#materials');}}catch{}
 async function loadCloudMedia(){try{const response=await fetch(syncService+'/media',{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)return;const index=await response.json();cloudMedia=Object.fromEntries(Object.entries(index).map(([id,items])=>[id,items.map(m=>({type:m.type,url:syncService+m.url}))]));drawCards();}catch{}}
+function requestMediaKey(){return new Promise(resolve=>{const dialog=document.createElement('dialog');dialog.innerHTML='<form method="dialog"><h3>素材管理授权</h3><p class="sub">输入管理密钥后，此浏览器会记住授权。</p><input name="key" type="password" aria-label="素材管理密钥" autocomplete="off" required><p style="margin-top:14px"><button value="cancel" formnovalidate>取消</button> <button value="save" class="primary">授权并保存</button></p></form>';document.body.append(dialog);dialog.addEventListener('close',()=>{const value=dialog.returnValue==='save'?dialog.querySelector('input').value.trim():null;dialog.remove();resolve(value);},{once:true});dialog.showModal();});}
 async function prepareImage(file){
  if(!file.type.startsWith('image/'))throw Error('云端绑定目前支持图片；视频请上传首帧截图。');
  const bitmap=await createImageBitmap(file);try{
@@ -332,7 +333,7 @@ document.addEventListener('click',event=>{
 document.addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.matches('th[data-table]'))event.target.click();});
 $('mediaFile').addEventListener('change',async()=>{const files=[...$('mediaFile').files],id=currentBind;$('mediaFile').value='';if(!files.length)return;try{
  if(files.length>6)throw Error('每次最多绑定6张图片。');
- let key=localStorage.getItem('limomoMediaKey');if(!key){key=prompt('请输入素材管理密钥（仅管理者上传需要）：');if(!key)return;}
+ let key=localStorage.getItem('limomoMediaKey');if(!key){key=await requestMediaKey();if(!key)return;}
  toast('正在压缩并保存图片到云端…');const images=await Promise.all(files.map(prepareImage));
  const response=await fetch(syncService+'/media',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({id,images}),signal:AbortSignal.timeout(60000)});const result=await response.json();if(!response.ok)throw Error(result.error||'保存失败');
  localStorage.setItem('limomoMediaKey',key);cloudMedia[id]=result.items.map(m=>({type:m.type,url:syncService+m.url}));drawCards();toast('素材已保存到云端，刷新后保留，其他人也可查看。');

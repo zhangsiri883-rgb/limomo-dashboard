@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>梨么么 · 店铺经营与内容看板</title>
-<link rel="stylesheet" href="style.css?v=20261106-3">
+<link rel="stylesheet" href="style.css?v=20261106-4">
 </head>
 <body>
 <header>
@@ -23,7 +23,7 @@
  <section id="materials"><div class="sectionhead"><h2>素材分析</h2><div class="cardcontrols"><label><input type="checkbox" id="newOnly"> 仅本期发布</label><input id="search" placeholder="搜索笔记标题 / 商品 / 账号" aria-label="搜索笔记"><select id="sort" aria-label="素材排序"><option value="read">阅读量 ↓</option><option value="pay">支付金额 ↓</option><option value="shallow">浅层互动率 ↓</option><option value="deep">深层互动率 ↓</option><option value="publish">发布时间 ↓</option></select></div></div><p id="materialInfo" class="sub"></p><div id="cards" class="cards"></div><button id="more" hidden>加载更多</button></section>
  <section id="definitions"><h2>数据与计算口径</h2><div class="definitions"><div><h3>商品与成交</h3><p>商品只按“统一商品名”合并，不区分渠道，不使用商品 ID。内容部分支付金额统一采用“引流店铺主页支付金额”列，包含内容总览、效果汇总、素材卡片、排序与环比；不与店铺支付金额相加。</p></div><div><h3>比率公式</h3><p>PV＝商品访客数÷总访客数；加购率＝新增加购人数÷商品访客数；支付转化率＝支付买家数÷商品访客数；加购转化率＝支付买家数÷新增加购人数。浅层＝（点赞＋收藏）÷阅读；深层＝（评论＋关注）÷阅读。汇总后重算，分母为零显示“—”。</p></div><div><h3>字段缺失与发布数量</h3><p>笔记加购件数采用商笔底表提供的字段。新增关注采用“笔记点击关注次数”，为次数口径。店铺表没有商品、账号、素材维度，选择这些筛选后相关店铺指标显示无维度数据。无效数值不填零。</p></div><div><h3>刷新与素材</h3><p>在线版点击刷新数据，通过同步服务读取腾讯底表的四张指定数据页；全部成功后统一更新共享数据，其他访客每 30 秒检查更新。为避免重复请求，一分钟内重复点击复用刚完成的结果。失败时保留上次数据，并提示原因。素材来源为底表“笔记链接”列，点击预览在窗口内加载笔记页面；平台限制嵌入或需要登录时可打开原笔记。绑定图片经压缩后自动保存到云端，刷新后保留并共享；上传需素材管理授权，视频请上传首帧图片。</p></div></div></section>
 </main><dialog id="preview"><button id="closePreview" aria-label="关闭预览">×</button><div id="previewBody"></div></dialog><input type="file" id="mediaFile" accept="image/*" multiple hidden><div id="toast" role="status"></div>
-<script src="app.js?v=20261106-3"></script>
+<script src="app.js?v=20261106-4"></script>
 </body></html>
 
 
