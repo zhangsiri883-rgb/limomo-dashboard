@@ -14,7 +14,7 @@ const ratio=(a,b)=>a!==null&&b!==null&&b!==0?a/b:null;
 let coverScreenshots={};
 let raw={},shop=[],links=[],notes=[],meta=[],tableState={},mediaBindings=new Map(),visibleCards=24,currentBind='',currentMaterial=[],lastSnapshot='';
 let filters={compareStart:'',compareEnd:'',start:'',end:'',product:'',account:'',media:'',kind:''};
-const columns={pay:['支付金额','money'],visitors:['商品访客数','num'],totalVisitors:['总访客数','num'],cart:['新增加购人数','num'],cartItems:['加购件数','num'],buyers:['支付买家数','num'],pv:['PV','pct'],cartRate:['加购率','pct'],payRate:['支付转化率','pct'],cartPayRate:['加购转化率','pct'],read:['笔记阅读量','num'],home:['引流主页次数','num'],noteCart:['笔记加购人数','num'],noteItems:['笔记加购件数','num'],like:['点赞数','num'],collect:['收藏数','num'],comment:['评论数','num'],follow:['新增关注次数','num'],shallow:['浅层互动率','pct'],deep:['深层互动率','pct'],homePay:['引流主页支付金额','money'],count:['发布总数','num'],commercial:['商品笔记数','num'],ordinary:['普通笔记数','num']};
+const columns={pay:['支付金额','money'],visitors:['商品访客数','num'],totalVisitors:['总访客数','num'],cart:['新增加购人数','num'],cartItems:['加购件数','num'],buyers:['支付买家数','num'],pv:['PV','pct'],cartRate:['加购率','pct'],payRate:['支付转化率','pct'],cartPayRate:['加购转化率','pct'],read:['笔记阅读量','num'],home:['引流主页次数','num'],homeRate:['主页引流率','pct'],noteCart:['笔记加购人数','num'],noteItems:['笔记加购件数','num'],like:['点赞数','num'],collect:['收藏数','num'],comment:['评论数','num'],follow:['新增关注次数','num'],shallow:['浅层互动率','pct'],deep:['深层互动率','pct'],homePay:['引流主页支付金额','money'],count:['发布总数','num'],commercial:['商品笔记数','num'],ordinary:['普通笔记数','num']};
 const pick=(r,keys)=>{for(const k of keys)if(r[k]!==undefined&&r[k]!==null&&r[k]!=='')return r[k];return null;};
 const performanceMetrics=[['销售指标','pay','支付金额','money'],['销售指标','totalVisitors','总访客数','num'],['销售指标','visitors','商品访客数','num'],['销售指标','pv','PV','pct'],['销售指标','cart','加购人数','num'],['销售指标','cartItems','加购件数','num'],['内容指标','pay','内容支付金额','money'],['内容指标','read','笔记阅读量','num'],['内容指标','home','引流主页次数','num'],['内容指标','like','点赞数','num'],['内容指标','collect','收藏数','num'],['内容指标','comment','评论数','num'],['内容指标','follow','新增关注次数','num'],['内容指标','shallow','浅层互动率','pct'],['内容指标','deep','深层互动率','pct']];
 function monthBefore(value){if(!value)return '';const [year,month,day]=value.split('-').map(Number);const last=new Date(Date.UTC(year,month-1,0)).getUTCDate();return new Date(Date.UTC(year,month-2,Math.min(day,last))).toISOString().slice(0,10);}
@@ -81,7 +81,7 @@ const metricKeys=['pay','visitors','totalVisitors','shopPageVisitors','cart','ca
 function aggregate(rows){
  const result={_missing:{},_total:rows.length};
  for(const key of metricKeys){const values=rows.map(r=>r[key]).filter(v=>v!==null&&v!==undefined);result[key]=values.length?values.reduce((a,b)=>a+b,0):null;result._missing[key]=rows.length-values.length;}
- result.pv=ratio(result.visitors,result.totalVisitors);result.cartRate=ratio(result.cart,result.visitors);result.payRate=ratio(result.buyers,result.visitors);result.cartPayRate=ratio(result.buyers,result.cart);result.shallow=result.like!==null&&result.collect!==null?ratio(result.like+result.collect,result.read):null;result.deep=result.comment!==null&&result.follow!==null?ratio(result.comment+result.follow,result.read):null;
+ result.homeRate=ratio(result.home,result.read);result.pv=ratio(result.visitors,result.totalVisitors);result.cartRate=ratio(result.cart,result.visitors);result.payRate=ratio(result.buyers,result.visitors);result.cartPayRate=ratio(result.buyers,result.cart);result.shallow=result.like!==null&&result.collect!==null?ratio(result.like+result.collect,result.read):null;result.deep=result.comment!==null&&result.follow!==null?ratio(result.comment+result.follow,result.read):null;
  return result;
 }
 function group(rows,key){const map=new Map();for(const r of rows){const k=r[key]||'未提供';if(!map.has(k))map.set(k,[]);map.get(k).push(r);}return [...map].map(([name,list])=>({name,...aggregate(list),_rows:list}));}
@@ -219,7 +219,7 @@ function render(){
  const hasPriorPublication=meta.some(r=>r.publish>=filters.compareStart&&r.publish<=filters.compareEnd);
  table('publishTable',pg,['count','commercial','ordinary'],'商品名',pc,hasPriorPublication?countRows(previousPublished):[],hasPriorPublication?countTotal(previousPublished):null);
  publicationTrend(published);
- const effectKeys=['pay','publishedCount','read','home','noteItems','like','collect','comment','follow','shallow','deep'];
+ const effectKeys=['pay','publishedCount','read','home','homeRate','noteItems','like','collect','comment','follow','shallow','deep'];
  columns.publishedCount=['发布数量','num'];
  for(const [id,key,label]of [['effectProduct','product','商品名'],['effectAccount','account','账号'],['effectMedia','media','素材类型'],['effectKind','kind','笔记类型']]){
   const withCounts=(rows,publications)=>{
