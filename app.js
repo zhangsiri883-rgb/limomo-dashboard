@@ -95,10 +95,10 @@ function comparisonBadge(current,previous,type,invalid=false){
  if(current===null||current===undefined)return '<div class="comparison neutral">当前无可比数据</div>';
  if(previous===null||previous===undefined)return '<div class="comparison neutral">对比期无数据</div>';
  const difference=current-previous;
- if(type!=='pct'&&previous===0&&current!==0)return '<div class="comparison neutral">对比期为 0，无法计算环比</div>';
+ if(type!=='pct'&&previous===0&&current!==0)return '<div class="comparison neutral">对比期为 0，无法计算变化率</div>';
  const change=type==='pct'?difference*100:previous===0?0:difference/previous*100;
  const rounded=Number(change.toFixed(2)),direction=rounded>0?'up':rounded<0?'down':'flat';
- const text=rounded===0?'环比持平':`环比 ${rounded>0?'▲ +':'▼ '}${rounded.toFixed(2)}${type==='pct'?'pp':'%'}`;
+ const text=rounded===0?'持平':`${rounded>0?'▲ +':'▼ '}${rounded.toFixed(2)}${type==='pct'?'pp':'%'}`;
  return `<div class="comparison ${direction}">${text}</div>`;
 }
 function addComparisons(id,keys,current,previous){
